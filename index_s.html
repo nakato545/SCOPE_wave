@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>波の伝わり方 </title>
+
+<style>
+/* ===== 全体 ===== */
+html, body {
+  margin: 0; padding: 0; width: 100%; height: 100%;
+  font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+  overflow: hidden;
+}
+
+/* ===== 背景 ===== */
+body {
+  background-color: #eef;
+  background-image: url("background.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* ===== ふりがな ===== */
+ruby { ruby-position: over; }
+rt { font-size: 0.5em; }
+
+/* ===== 追加：左上リンク ===== */
+.top-left-link {
+  position: fixed; top: 12px; left: 12px;
+  padding: 8px 14px; border: 2px solid black; border-radius: 14px;
+  background: white; font-size: 14px; text-decoration: none;
+  color: black; z-index: 10;
+}
+.top-left-link:hover { background-color: #d0d0d0; }
+
+/* ===== 中央表示 ===== */
+.container {
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -45%);
+  display: flex; flex-direction: column; align-items: center;
+}
+
+/* ===== タイトル ===== */
+.title { font-size: 32px; margin-bottom: 40px; font-weight: bold; }
+
+/* ===== モードボタン ===== */
+.mode-button {
+  width: 260px; padding: 16px; margin: 16px 0;
+  border: 2px solid black; border-radius: 20px;
+  background-color: white; font-size: 18px; text-align: center;
+  cursor: pointer; transition: 0.2s;
+}
+.mode-button:hover { background-color: #d0d0d0; transform: scale(1.05); }
+
+/* ===== フッターリンク ===== */
+.footer-link {
+  position: fixed; right: 12px; bottom: 12px;
+  padding: 8px 14px; border: 2px solid black; border-radius: 14px;
+  background: white; font-size: 12px; line-height: 1.4;
+}
+.footer-link a { display: block; color: black; text-decoration: none; }
+.footer-link:hover { background-color: #d0d0d0; }
+
+/* ===== ロード画面 ===== */
+#loading {
+  position: fixed; inset: 0; 
+  background: rgba(255,255,255,0.9); 
+  backdrop-filter: blur(10px);
+  display: flex; justify-content: center;
+  align-items: center; z-index: 9999; transition: opacity 1s ease;
+}
+#loading.fade-out { opacity: 0; pointer-events: none; }
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- デフォルト（スマホ） --- */
+#loading-logo {
+  width: 80px;
+  transition: transform 0.8s ease-in-out;
+}
+#loading-text {
+  width: 140px; 
+  opacity: 0;
+  transform: translateX(-5px); 
+  transition: opacity 0.8s ease-out 0.3s, transform 0.8s ease-out 0.3s;
+  margin-left: 5px; 
+}
+.animating #loading-logo { transform: translateX(-25px); }
+.animating #loading-text { opacity: 1; transform: translateX(0); }
+
+/* --- PC --- */
+@media (min-width: 768px) {
+  #loading-logo {
+    width: 120px;
+  }
+  #loading-text {
+    width: 210px;
+    margin-left: 8px; 
+  }
+  .animating #loading-logo { 
+    transform: translateX(-40px); 
+  }
+}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="logo-container">
+    <img src="SCOPEロゴ通常版-768x768.webp" alt="SCOPEロゴ" id="loading-logo">
+    <img src="S.png" alt="" id="loading-text">
+  </div>
+</div>
+
+<a href="index.html" class="top-left-link">
+  パソコンの方はこちら
+</a>
+
+<div class="container" id="content">
+  <div class="title">
+    <ruby>波<rt>なみ</rt></ruby>の
+    <ruby>伝<rt>つた</rt></ruby>わり
+    <ruby>方<rt>かた</rt></ruby>
+  </div>
+
+  <div class="mode-button" onclick="location.href='wave_s_sp.html'">
+    <ruby>波<rt>なみ</rt></ruby>を<ruby>観察<rt>かんさつ</rt></ruby>する</div>
+
+  <div class="mode-button" onclick="location.href='interference_s.html'">
+    <ruby>波<rt>なみ</rt></ruby>の<ruby>重<rt>かさ</rt></ruby>なりを<ruby>観察<rt>かんさつ</rt></ruby>する </div>
+
+  <div class="mode-button" onclick="location.href='super.html'">
+    準備中</div>
+</div>
+
+<div class="footer-link">
+  <a href="https://tus-scope.tokyo/" target="_blank">
+    ホームページ：<br>
+    東京理科大 理科教育サークル SCOPE
+  </a>
+</div>
+
+<script>
+window.addEventListener("load", () => {
+  const loader = document.getElementById("loading");
+  
+  setTimeout(() => {
+    loader.classList.add("animating");
+  }, 500);
+
+  setTimeout(() => {
+    loader.classList.add("fade-out");
+  }, 2800);
+});
+</script>
+</body>
+</html>
