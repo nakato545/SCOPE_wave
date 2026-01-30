@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>波の伝わり方</title>
+
+<style>
+/* ===== 全体 ===== */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+}
+
+/* ===== 背景 ===== */
+body {
+  background-image: url("background.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* ===== ふりがな ===== */
+ruby { ruby-position: over; }
+rt { font-size: 0.5em; }
+
+/* ===== ホームボタン ===== */
+.home-button {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  padding: 8px 14px;
+  border: 2px solid black;
+  border-radius: 14px;
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  z-index: 10;
+}
+.home-button:hover { background-color: #d0d0d0; }
+
+/* ===== 中央表示 ===== */
+.container {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -45%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ===== タイトル ===== */
+.title {
+  font-size: 32px;
+  margin-bottom: 40px;
+}
+
+/* ===== モードボタン ===== */
+.mode-button {
+  width: 260px;
+  padding: 16px;
+  margin: 16px 0;
+  border: 2px solid black;
+  border-radius: 20px;
+  background-color: white;
+  font-size: 18px;
+  text-align: center;
+  cursor: pointer;
+}
+.mode-button:hover { background-color: #d0d0d0; }
+
+/* ===== フッターリンク（全体クリック可） ===== */
+.footer-link {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  padding: 8px 14px;
+  border: 2px solid black;
+  border-radius: 14px;
+  background: white;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.footer-link a {
+  display: block;              /* ← 全体をリンク化 */
+  color: black;
+  text-decoration: none;
+}
+
+.footer-link:hover {
+  background-color: #d0d0d0;
+}
+
+/* ===== ロード画面 ===== */
+#loading {
+  position: fixed;
+  inset: 0;
+  background: rgba(255,255,255,0.4);
+  backdrop-filter: blur(10px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  opacity: 1;
+  transition: opacity 1s ease;
+}
+#loading.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+#loading img {
+  width: 120px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- ロード画面 -->
+<div id="loading">
+  <img src="SCOPEロゴ通常版-768x768.webp" alt="SCOPEロゴ">
+</div>
+
+<!-- ホーム -->
+<div class="home-button" onclick="goHome()">
+  <ruby>ホーム<rt></rt></ruby>
+</div>
+
+<!-- 中央コンテンツ -->
+<div class="container" id="content">
+
+  <div class="title">
+    <ruby>波<rt>なみ</rt></ruby>の
+    <ruby>伝<rt>つた</rt></ruby>わり
+    <ruby>方<rt>かた</rt></ruby>
+  </div>
+
+  <div class="mode-button" onclick="changeMode('near')">
+    <ruby>身<rt>み</rt></ruby>近な<ruby>波<rt>なみ</rt></ruby>
+  </div>
+
+  <div class="mode-button" onclick="changeMode('type')">
+    <ruby>縦<rt>たて</rt></ruby>波・<ruby>横<rt>よこ</rt></ruby>波
+  </div>
+
+  <div class="mode-button" onclick="changeMode('super')">
+    <ruby>波<rt>なみ</rt></ruby>の<ruby>重<rt>かさ</rt></ruby>なり
+  </div>
+
+</div>
+
+<!-- 右下URL（全部クリック可能） -->
+<div class="footer-link">
+  <a href="https://tus-scope.tokyo/" target="_blank">
+    ホームページ：<br>
+    東京理科大 理科教育サークル SCOPE
+  </a>
+</div>
+
+<script>
+function goHome() {
+  location.reload();
+}
+
+function changeMode(mode) {
+  if (mode === "near") showNear();
+  if (mode === "type") showType();
+  if (mode === "super") showSuper();
+}
+
+function showNear() {
+  document.getElementById("content").innerHTML = `
+    <h2>身近な波</h2>
+    <p>水面の波・音の波など、身の回りの波を学ぼう。</p>
+    <button onclick="goHome()">戻る</button>
+  `;
+}
+
+function showType() {
+  document.getElementById("content").innerHTML = `
+    <h2>縦波と横波</h2>
+    <p>波の進み方と振動の向きの違いを見てみよう。</p>
+    <button onclick="goHome()">戻る</button>
+  `;
+}
+
+function showSuper() {
+  document.getElementById("content").innerHTML = `
+    <h2>波の重なり</h2>
+    <p>波は重なると強め合ったり弱め合ったりする。</p>
+    <button onclick="goHome()">戻る</button>
+  `;
+}
+
+// ロード制御
+window.addEventListener("load", () => {
+  setTimeout(() => {
+    document.getElementById("loading").classList.add("fade-out");
+  }, 1000);
+});
+</script>
+
+</body>
+</html>
+
+
