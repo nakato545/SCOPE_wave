@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>なみの重なり(干渉)</title>
+<style>
+  :root { 
+    --active-purple: #e9e5ff; 
+    --tank-size: min(75%, 45vw); 
+    --scale-factor: 1;
+    --btn-area-width: 140px;
+    --header-grey: #f1f5f9;
+  }
+  body {
+    background-color: #f8fafc; margin: 0; 
+    height: 100dvh; 
+    display: flex; align-items: center; justify-content: center;
+    font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+    user-select: none; overflow: hidden; touch-action: none;
+    color: #000000;
+  }
+
+  /* ロード画面を最優先の前面に配置 */
+  #loading { 
+    position: fixed; top:0; left:0; width:100%; height: 100dvh;
+    background:white; display:flex; flex-direction:column; 
+    justify-content:center; align-items:center; z-index:9999999; 
+    transition: opacity 0.5s ease; 
+  }
+  .logo-container { position: relative; }
+  #loading img { width: 180px; height: auto; display: block; }
+  .loading-text { position:absolute; right:0; bottom:-25px; font-size:14px; font-weight:bold; color:#555; animation:blink 1.2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.1;} }
+  #loading.hide { opacity: 0; pointer-events: none; visibility: hidden; }
+
+  ruby { ruby-align: center; }
+  rt { font-size: 0.55em; line-height: 1.2; color: #000; }
+  rt.dummy { color: transparent; }
+
+  button { 
+    background-color:#ffffff !important; color:#000 !important; border:3px solid #000 !important; 
+    font-weight:bold; cursor:pointer; transition: transform 0.1s, background-color 0.1s; 
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; padding: 4px; min-height: 52px; box-sizing: border-box; overflow: visible; position: relative;
+  }
+  button:active { transform: scale(0.96); }
+  
+  button:not(.no-color):active, button.active { background-color:var(--active-purple) !important; }
+  button:disabled { background-color: #e2e8f0 !important; color: #000000 !important; border-color: #94a3b8 !important; cursor: not-allowed; transform: none !important; }
+  .no-color:active { background-color:#f1f5f9 !important; }
+
+  .main-layout { 
+    position: relative; display: flex; align-items: center; justify-content: center;
+    gap: calc(15px * var(--scale-factor)); padding: 10px; background: #fff; 
+    border: 2px solid #000; border-radius: 20px; 
+    width: 98vw; height: 96dvh; 
+    max-height: 98dvh; box-sizing: border-box; overflow: hidden;
+  }
+
+  .simulation-view { 
+    display: flex; align-items: center; gap: calc(15px * var(--scale-factor)); 
+    height: 100%; flex-grow: 1; justify-content: center;
+    min-width: 0;
+  }
+  
+  .internal-btn-area { 
+    width: var(--btn-area-width); height: 100%; display: flex; flex-direction: column; 
+    overflow-y: auto; scrollbar-gutter: stable; border-left: 1px solid #ddd; padding-left: 10px; padding-right: 5px; 
+    flex-shrink: 0; position: relative; z-index: 200; 
+    min-height: 0; box-sizing: border-box;
+  }
+  .menu-group { border: 2px solid transparent; border-radius: 12px; padding: 4px; margin-bottom: 8px; flex-shrink: 0; }
+  .menu-group:not(.closed) { background: #f8fafc; border-color: #e2e8f0; }
+  .menu-header { width: 100%; padding: 6px 10px; background: var(--header-grey) !important; border: 2px solid #000 !important; text-align: left; font-size: 13px; font-weight: bold; margin-bottom: 0px; border-radius: 8px !important; cursor: pointer; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; z-index: 2; transition: transform 0.1s; }
+  .menu-header:active { transform: scale(0.98); }
+  .menu-header span { font-size: 10px; transition: transform 0.3s ease; transform: rotate(180deg); }
+  .menu-group.closed .menu-header span { transform: rotate(0deg); }
+  .menu-content { display: flex; flex-direction: column; gap: 8px; padding: 8px 4px 4px 4px; }
+  .menu-group.closed .menu-content { display: none; }
+  .menu-content button, .menu-content a { width: 100%; font-size: 12px; text-decoration: none; text-align: center; border-radius: 8px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; min-height: 48px; position: relative; flex-shrink: 0; }
+  .menu-content a { border: 2px solid #000; color: #000; font-weight: bold; background: #fff; transition: transform 0.1s; }
+  .menu-content a:active { transform: scale(0.96); background-color: #f1f5f9; }
+
+  #analysisLegend { position: fixed; top:10px; left:10px; z-index:10000; background: rgba(255,255,255,0.95); padding:8px 12px; border:2px solid black; border-radius:10px; font-size:12px; display:none; line-height: 1.8; }
+  
+  .canvas-container { 
+    position: relative; 
+    height: var(--tank-size); 
+    aspect-ratio: 1 / 1;
+    border: calc(4px * var(--scale-factor)) solid #000; background: #e0f2f7; 
+    border-radius: 12px; transition: transform .5s; overflow: visible; 
+    flex-shrink: 0; z-index: 150; 
+    margin-top: calc(20px * var(--scale-factor)); 
+  }
+  #stage { display: block; width: 100%; height: 100%; border-radius: 8px; image-rendering: pixelated; }
+
+  .canvas-container.mode-3d { border-color: transparent !important; background: #ffffff !important; }
+  #wire-svg { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:10; overflow: visible; }
+  #wire-svg.front-layer { z-index: 2000 !important; }
+
+  #guide-line {
+    position: absolute; top: -1px; left: 0; width: 100%; height: 2px;
+    border-top: 2px dashed #94a3b8; display: none; pointer-events: none; z-index: 5;
+  }
+  .mode-3d #guide-line { display: block; }
+
+  #orientation-warning { 
+    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100dvh;
+    background: #ffffff; z-index: 999999; color: #000000; flex-direction: column; 
+    justify-content: center; align-items: center; text-align: center; padding: 20px; box-sizing: border-box; 
+  }
+  
+  .rotate-icon { width: 44px; height: 88px; border: 3px solid #000; border-radius: 8px; position: relative; margin-bottom: 25px; background: #fff; animation: rotate-anim 2s infinite ease-in-out; box-sizing: border-box; }
+  .rotate-icon::before { content: ""; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 18px; height: 4px; background: #000; border-bottom-left-radius: 3px; border-bottom-right-radius: 3px; }
+  .rotate-icon::after { content: ""; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 14px; height: 2px; background: #000; border-radius: 1px; }
+  #orientation-warning p { display: flex !important; justify-content: center; align-items: flex-end !important; gap: 0.1em; font-weight: bold; font-size: 20px; margin: 0; line-height: 1.2; }
+  #orientation-warning ruby { display: inline-flex !important; flex-direction: column-reverse !important; align-items: center !important; vertical-align: bottom !important; }
+  #orientation-warning rt { display: block !important; font-size: 10px !important; line-height: 1 !important; margin-bottom: 3px !important; visibility: visible !important; height: auto !important; }
+  @keyframes rotate-anim { 0% { transform: rotate(0deg); } 30%, 100% { transform: rotate(-90deg); } }
+  
+  .control-unit { display:flex; flex-direction:column; align-items:center; justify-content: center; gap: 6px; width: calc(100px * var(--scale-factor)); position: relative; z-index: 3000; flex-shrink: 0; }
+  .control-unit svg { width: calc(80px * var(--scale-factor)); height: calc(80px * var(--scale-factor)); }
+  .dial { fill:#f8fafc; stroke:#000; stroke-width:4; } .inner { fill:#e2e8f0; } .handle{ stroke:#000; stroke-width:7; stroke-linecap:round; }
+  .gauge-container{ width: calc(14px * var(--scale-factor)); height: calc(80px * var(--scale-factor)); background:#cbd5e1; border:2px solid #000; border-radius:10px; overflow:hidden; position:relative; }
+  .gauge-bar{ width:100%; height:0%; position:absolute; bottom:0; } #gauge1{ background:#ef4444; } #gauge2{ background:#3b82f6; }
+  .valve-btn{ border-radius: 10px !important; min-height: 40px; font-size: 12px; }
+  .valve-btn:active { background-color: #f1f5f9 !important; }
+  
+  .nozzle{ position:absolute; width: calc(25px * var(--scale-factor)); height: calc(35px * var(--scale-factor)); top: calc(-16px * var(--scale-factor)); transform:translateX(-50%); z-index:25; cursor:ew-resize; }
+  .nozzle-stick{ width:35%; height:85%; margin:0 auto; border-radius:0 0 5px 5px; border:2px solid #000; }
+  #stick1{ background:#ef4444; } #stick2{ background:#3b82f6; }
+  .drag-guide { position: absolute; top: -25px; left: 50%; transform: translateX(-50%); color: #000000; font-size: calc(20px * var(--scale-factor)); font-weight: bold; white-space: nowrap; pointer-events: none; animation: guide-blink 2s infinite; z-index: 30; }
+  #play-guide-msg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.75); color: white; padding: 14px 28px; border-radius: 40px; font-weight: bold; pointer-events: none; opacity: 0; transition: opacity 0.4s ease; z-index: 2000; white-space: nowrap; font-size: 18px; }
+  #play-guide-msg.show { opacity: 1; }
+</style>
+</head>
+<body class="is-loading">
+
+<div id="loading"><div class="logo-container"><img src="SCOPEロゴ通常版-768x768.webp" alt="SCOPEロゴ"><div class="loading-text">LOADING...</div></div></div>
+
+<div id="orientation-warning">
+  <div class="rotate-icon"></div>
+  <p><ruby>画<rt>が</rt></ruby><ruby>面<rt>めん</rt></ruby>を<ruby>横<rt>よこ</rt></ruby>にしてください</p>
+</div>
+
+<div id="analysisLegend">
+  <span style="color:#ef4444; font-weight:bold;">■</span> <ruby>赤<rt>あか</rt></ruby>：<ruby>強<rt>つよ</rt></ruby>め<ruby>合<rt>あ</rt></ruby>うところ<br>
+  <span style="color:#94a3b8; font-weight:bold;">■</span> <ruby>白<rt>しろ</rt></ruby>：<ruby>消<rt>け</rt></ruby>し<ruby>合<rt>あ</rt></ruby>うところ
+</div>
+
+<div class="main-layout" id="main-ui">
+  <div class="simulation-view">
+    <svg id="wire-svg">
+      <path id="path1" d="" stroke="#ef4444" stroke-width="5" fill="none" stroke-linecap="round"></path>
+      <path id="path2" d="" stroke="#3b82f6" stroke-width="5" fill="none" stroke-linecap="round"></path>
+    </svg>
+    <div class="control-unit">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div id="v1-area"><svg viewBox="0 0 300 300"><circle cx="150" cy="150" r="120" class="dial"/><circle cx="150" cy="150" r="70" class="inner"/><g id="ticks1"></g><g id="rot1"><line x1="150" y1="30" x2="150" y2="270" class="handle"/><line x1="30" y1="150" x2="270" y2="150" class="handle"/><circle cx="150" cy="30" r="14" style="fill:#ef4444; stroke:#000; stroke-width:3;"></circle></g></svg></div>
+        <div id="g1-area"><div class="gauge-container"><div id="gauge1" class="gauge-bar"></div></div></div>
+      </div>
+      <button class="valve-btn" onmousedown="startBtn(1,1)" ontouchstart="startBtn(1,1)"><ruby>開<rt>あ</rt></ruby><ruby>け<rt class="dummy">・</rt></ruby><ruby>る<rt class="dummy">・</rt></ruby></button>
+      <button class="valve-btn" onmousedown="startBtn(1,-1)" ontouchstart="startBtn(1,-1)"><ruby>閉<rt>し</rt></ruby><ruby>め<rt class="dummy">・</rt></ruby><ruby>る<rt class="dummy">・</rt></ruby></button>
+    </div>
+    <div class="canvas-container" id="water-tank">
+      <div id="guide-line"></div>
+      <canvas id="stage" width="225" height="225"></canvas>
+      <div id="gl-canvas-container" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"></div>
+      <div id="play-guide-msg"><ruby>再<rt>さい</rt></ruby><ruby>生<rt>せい</rt></ruby>ボタンを<ruby>押<rt>お</rt></ruby>してね！</div>
+      <div id="nozzle1" class="nozzle" style="left:30%;"><div class="drag-guide">↔</div><div class="nozzle-stick" id="stick1"></div></div>
+      <div id="nozzle2" class="nozzle" style="left:70%;"><div class="drag-guide">↔</div><div class="nozzle-stick" id="stick2"></div></div>
+    </div>
+    <div class="control-unit">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div id="v2-area"><svg viewBox="0 0 300 300"><circle cx="150" cy="150" r="120" class="dial"/><circle cx="150" cy="150" r="70" class="inner"/><g id="ticks2"></g><g id="rot2"><line x1="150" y1="30" x2="150" y2="270" class="handle"/><line x1="30" y1="150" x2="270" y2="150" class="handle"/><circle cx="150" cy="30" r="14" style="fill:#3b82f6; stroke:#000; stroke-width:3;"></circle></g></svg></div>
+        <div id="g2-area"><div class="gauge-container"><div id="gauge2" class="gauge-bar"></div></div></div>
+      </div>
+      <button class="valve-btn" onmousedown="startBtn(2,1)" ontouchstart="startBtn(2,1)"><ruby>開<rt>あ</rt></ruby><ruby>け<rt class="dummy">・</rt></ruby><ruby>る<rt class="dummy">・</rt></ruby></button>
+      <button class="valve-btn" onmousedown="startBtn(2,-1)" ontouchstart="startBtn(2,-1)"><ruby>閉<rt>し</rt></ruby><ruby>め<rt class="dummy">・</rt></ruby><ruby>る<rt class="dummy">・</rt></ruby></button>
+    </div>
+  </div>
+
+  <div class="internal-btn-area">
+    <div class="menu-group"><div class="menu-content" style="padding-top:0;">
+      <a href="index.html"><ruby>ホ<rt class="dummy">・</rt></ruby><ruby>ー<rt class="dummy">・</rt></ruby><ruby>ム<rt class="dummy">・</rt></ruby></a>
+      <button onclick="alert('【使い方】\n左右のバルブを回すかボタンで波を大きくします。\nノズルを動かして干渉の変化を観察しましょう。')"><ruby>使<rt>つか</rt></ruby><ruby>い<rt class="dummy">・</rt></ruby><ruby>方<rt>かた</rt></ruby></button>
+      <button onclick="alert('【解説】\n2つの波が重なり合うとき、山と山が重なると大きな波になり、山と谷が重なると波が打ち消し合います。これを干渉と呼びます。')"><ruby>解<rt>かい</rt></ruby><ruby>説<rt>せつ</rt></ruby></button>
+    </div></div>
+    <div class="menu-group closed"><button class="menu-header" onclick="toggleMenu(this)"><ruby>操<rt>そう</rt></ruby><ruby>作<rt>さ</rt></ruby> <span>▲</span></button><div class="menu-content"><button id="btnPlay" class="active" onclick="togglePlay()">▶ ⏸</button><button id="btnSlow" onclick="toggleSlow()">スロー</button><button class="no-color" onclick="handleReset()">リセット</button></div></div>
+    <div class="menu-group closed"><button class="menu-header" onclick="toggleMenu(this)"><ruby>表<rt>ひょう</rt></ruby><ruby>示<rt>じ</rt></ruby> <span>▲</span></button><div class="menu-content"><button id="btnAnalysis" onclick="toggleAnalysis()"><ruby>調<rt>しら</rt></ruby><ruby>べ<rt class="dummy">・</rt></ruby><ruby>る<rt class="dummy">・</rt></ruby></button><button id="btn3D" onclick="toggle3D()"><ruby>3<rt class="dummy">・</rt></ruby><ruby>D<rt class="dummy">・</rt></ruby><ruby>表<rt>ひょう</rt></ruby><ruby>示<rt>じ</rt></ruby></button></div></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
+<script>
+  function adjustLayoutScale() {
+    const tank = document.getElementById('water-tank');
+    if(!tank) return;
+    const rect = tank.getBoundingClientRect();
+    const baseSize = 225; 
+    const newScale = rect.height / baseSize;
+    document.documentElement.style.setProperty('--scale-factor', Math.min(newScale, 1.2));
+  }
+  window.addEventListener('resize', adjustLayoutScale);
+  window.addEventListener('load', adjustLayoutScale);
+
+  let isPlaying = false; 
+  const loadingEl = document.getElementById("loading");
+  const orientWarning = document.getElementById("orientation-warning");
+
+  function checkOrientation() {
+    const isLandscape = window.innerWidth > window.innerHeight;
+    orientWarning.style.display = isLandscape ? "none" : "flex";
+  }
+  window.addEventListener("resize", checkOrientation);
+
+  // ロード開始関数（最初にこれを呼ぶ）
+  function startLoadingSequence() {
+    loadingEl.style.display = 'flex';
+    setTimeout(() => {
+      loadingEl.classList.add("hide");
+      document.body.classList.remove("is-loading");
+      isPlaying = true;
+      document.getElementById('btnPlay').classList.add('active');
+      
+      // ロード画面が消え始めたタイミング、または消えた後に方向判定とスケール調整
+      checkOrientation(); 
+      adjustLayoutScale();
+
+      setTimeout(() => { 
+        loadingEl.style.display = 'none'; 
+      }, 600);
+    }, 1500);
+  }
+
+  // 実行
+  (function() { 
+    startLoadingSequence(); 
+  })();
+
+  function toggleMenu(header) { header.parentElement.classList.toggle('closed'); }
+  function handleReset() { 
+    state.ptr = 0; state.history1.fill(0); state.history2.fill(0); state.xHistory1.fill(67); state.xHistory2.fill(157); state.phase1 = 0; state.phase2 = 0;
+    [1, 2].forEach(id => {
+      const v = state[`v${id}`]; v.angle = 0; v.btnDir = 0; v.dragMode = null; v.x = (id === 1) ? 67 : 157;
+      const nozzle = document.getElementById(`nozzle${id}`); nozzle.style.left = (v.x / W * 100) + "%";
+      document.getElementById(`rot${id}`).setAttribute("transform", "rotate(0 150 150)");
+      document.getElementById(`gauge${id}`).style.height = "0%";
+    });
+    state.drops.forEach(d => d.el.remove()); state.drops = [];
+    if (!is3D) { ctx.clearRect(0, 0, W, H); }
+  }
+  let nozzleGuided = false; function hideNozzleGuides() { if (nozzleGuided) return; document.querySelectorAll('.drag-guide').forEach(el => { el.style.animation = 'none'; el.style.opacity = '0'; }); nozzleGuided = true; }
+  const canvas2d = document.getElementById('stage'); const ctx = canvas2d.getContext('2d', { alpha: false });
+  const W = 225, H = 225, waveSpeed = 1.7; let isSlow = false, isAnalysis = false, is3D = false;
+  const state = { v1: { angle: 0, x: 67, btnDir: 0, dragMode: null, lastA: 0 }, v2: { angle: 0, x: 157, btnDir: 0, dragMode: null, lastA: 0 }, ptr: 0, history1: new Float32Array(3000), history2: new Float32Array(3000), xHistory1: new Float32Array(3000).fill(67), xHistory2: new Float32Array(3000).fill(157), phase1: 0, phase2: 0, drops: [] };
+  let msgTimer = null; 
+  function showPlayGuide() { if(!isPlaying) { const msg = document.getElementById("play-guide-msg"); msg.classList.add("show"); if(msgTimer) clearTimeout(msgTimer); msgTimer = setTimeout(() => msg.classList.remove("show"), 1500); } }
+  function togglePlay() { isPlaying = !isPlaying; document.getElementById('btnPlay').classList.toggle('active', isPlaying); }
+  function toggleSlow() { isSlow = !isSlow; document.getElementById('btnSlow').classList.toggle('active', isSlow); }
+  function toggleAnalysis() { isAnalysis = !isAnalysis; document.getElementById('btnAnalysis').classList.toggle('active', isAnalysis); document.getElementById('analysisLegend').style.display = isAnalysis ? 'block' : 'none'; }
+  let threeState = { renderer: null, scene: null, camera: null, mesh: null, geometry: null, material: null, glCanvas: null, zScale: 0.6 };
+  function toggle3D() { 
+    const tank = document.getElementById('water-tank'); const btnAna = document.getElementById('btnAnalysis'); const wireSvg = document.getElementById('wire-svg');
+    tank.classList.toggle('mode-3d'); document.getElementById('btn3D').classList.toggle('active'); is3D = tank.classList.contains('mode-3d');
+    if (is3D) { 
+      initThreeIfNeeded(); isAnalysis = false; btnAna.classList.remove('active'); btnAna.disabled = true; 
+      btnAna.innerHTML = `<ruby>3<rt class="dummy">・</rt></ruby><ruby>D<rt class="dummy">・</rt></ruby><ruby>機<rt>き</rt></ruby><ruby>能<rt>のう</rt></ruby><ruby>中<rt>ちゅう</rt></ruby><ruby>は<rt class="dummy">・</rt></ruby><ruby>不<rt>ふ</rt></ruby><ruby>可<rt>か</rt></ruby>`; 
+      document.getElementById('analysisLegend').style.display = 'none'; ctx.clearRect(0,0,W,H); wireSvg.classList.add('front-layer');
+    } else { 
+      state.drops.forEach(d => d.el.remove()); state.drops = []; disposeThree(); btnAna.disabled = false; 
+      btnAna.innerHTML = `<ruby>調<rt>しら</rt></ruby><ruby>べ<rt class="dummy">・</rt></ruby><ruby>る<rt class="dummy">・</rt></ruby>`; wireSvg.classList.remove('front-layer');
+    }
+  }
+  [1,2].forEach(id => { const layer = document.getElementById('ticks' + id); for (let i = 0; i < 12; i++) { const rad = (i * 30) * Math.PI / 180; const line = document.createElementNS("http://www.w3.org/2000/svg", "line"); line.setAttribute("x1", 150 + 120 * Math.cos(rad)); line.setAttribute("y1", 150 + 120 * Math.sin(rad)); line.setAttribute("x2", 150 + 135 * Math.cos(rad)); line.setAttribute("y2", 150 + 135 * Math.sin(rad)); line.setAttribute("stroke", "#000"); line.setAttribute("stroke-width", "4"); layer.appendChild(line); } });
+  function startBtn(id, d) { state['v'+id].btnDir = d; showPlayGuide(); }
+  window.addEventListener('mouseup', () => { state.v1.btnDir = 0; state.v2.btnDir = 0; });
+  window.addEventListener('touchend', () => { state.v1.btnDir = 0; state.v2.btnDir = 0; });
+  function setupInteraction(id) { 
+    const vArea = document.getElementById(`v${id}-area`), gArea = document.getElementById(`g${id}-area`), nozzle = document.getElementById(`nozzle${id}`), tank = document.getElementById('water-tank'), v = state[`v${id}`]; 
+    const getAngle = (e) => { const rect = vArea.getBoundingClientRect(); const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2; const clX = (e.touches ? e.touches[0].clientX : e.clientX), clY = (e.touches ? e.touches[0].clientY : e.clientY); let a = Math.atan2(clY - cy, clX - cx) * 180 / Math.PI + 90; return a < 0 ? a + 360 : a; }; 
+    vArea.addEventListener('mousedown', (e) => { v.dragMode = 'V'; v.lastA = getAngle(e); showPlayGuide(); });
+    vArea.addEventListener('touchstart', (e) => { v.dragMode = 'V'; v.lastA = getAngle(e); showPlayGuide(); e.preventDefault(); }, {passive: false});
+    gArea.addEventListener('mousedown', (e) => { v.dragMode = 'G'; updateG(e); showPlayGuide(); });
+    gArea.addEventListener('touchstart', (e) => { v.dragMode = 'G'; updateG(e); showPlayGuide(); e.preventDefault(); }, {passive: false});
+    function updateG(e) { const rect = gArea.querySelector('.gauge-container').getBoundingClientRect(); const clY = (e.touches ? e.touches[0].clientY : e.clientY); v.angle = Math.max(0, Math.min(360, (1 - (clY - rect.top) / rect.height) * 360)); } 
+    nozzle.addEventListener('mousedown', () => { hideNozzleGuides(); v.dragMode = 'N'; showPlayGuide(); });
+    nozzle.addEventListener('touchstart', () => { hideNozzleGuides(); v.dragMode = 'N'; showPlayGuide(); }, {passive: false});
+    const globalMove = (e) => { if (!v.dragMode) return; const clX = (e.touches ? e.touches[0].clientX : e.clientX); if (v.dragMode === 'V') { const cur = getAngle(e); let d = cur - v.lastA; if (d > 180) d -= 360; else if (d < -180) d += 360; v.angle = Math.max(0, Math.min(360, v.angle + d)); v.lastA = cur; } else if (v.dragMode === 'G') updateG(e); else if (v.dragMode === 'N') { const rect = tank.getBoundingClientRect(); v.x = Math.max(0, Math.min(W, (clX - rect.left) / (rect.width / W))); nozzle.style.left = (v.x / W * 100) + "%"; } if(e.touches) e.preventDefault(); }; 
+    window.addEventListener('mousemove', globalMove); window.addEventListener('touchmove', globalMove, {passive: false}); window.addEventListener('mouseup', () => v.dragMode = null); window.addEventListener('touchend', () => v.dragMode = null); 
+  }
+  [1,2].forEach(setupInteraction);
+  function initThreeIfNeeded() { 
+    if (threeState.renderer) return; 
+    const glContainer = document.getElementById('gl-canvas-container'); const glCanvas = document.createElement('canvas'); glCanvas.style.width = '100%'; glCanvas.style.height = '100%'; glContainer.appendChild(glCanvas); threeState.glCanvas = glCanvas; 
+    const renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true }); renderer.setClearColor(0xffffff, 1); renderer.setSize(glContainer.clientWidth, glContainer.clientHeight, false); threeState.renderer = renderer; 
+    const scene = new THREE.Scene(); scene.background = new THREE.Color(0xffffff); threeState.scene = scene; 
+    const camera = new THREE.PerspectiveCamera(45, glContainer.clientWidth / glContainer.clientHeight, 1, 5000); camera.position.set(W/2, -350, 300); camera.up.set(0,0,1); camera.lookAt(new THREE.Vector3(W/2, H/2, 0)); threeState.camera = camera; 
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6)); const dir = new THREE.DirectionalLight(0xffffff, 1.2); dir.position.set(W/2, -H, 200); scene.add(dir); 
+    const geom = new THREE.PlaneGeometry(W*1.5, H*1.5, 79, 79); const mat = new THREE.MeshPhongMaterial({ color: 0x0077be, shininess: 100, specular: 0x444444, side: THREE.DoubleSide }); const mesh = new THREE.Mesh(geom, mat); mesh.position.set(W/2, H/2, 0); 
+    scene.add(mesh); threeState.geometry = geom; threeState.material = mat; threeState.mesh = mesh; 
+  }
+  function disposeThree() { if (!threeState.renderer) return; if (threeState.glCanvas && threeState.glCanvas.parentNode) threeState.glCanvas.parentNode.removeChild(threeState.glCanvas); threeState.geometry.dispose(); threeState.material.dispose(); threeState.renderer.dispose(); threeState.renderer = null; }
+  function spawnDrop(x) { if (!is3D) return; const div = document.createElement('div'); div.className = 'drop'; const startX = (x / W * 100); div.style.left = startX + "%"; div.style.top = "20px"; document.getElementById('water-tank').appendChild(div); state.drops.push({ el: div, startX: startX, y: 20, v: 0 }); }
+  function draw() {
+    try {
+      [1, 2].forEach(id => { const v = state[`v${id}`]; if (v.btnDir !== 0) v.angle = Math.max(0, Math.min(360, v.angle + v.btnDir * 3.8)); });
+      let shouldAdvance = isPlaying; if (isPlaying && isSlow && Math.random() > 0.25) shouldAdvance = false;
+      if (shouldAdvance) {
+        state.ptr = (state.ptr + 1) % 3000;
+        [1, 2].forEach(id => {
+          const v = state[`v${id}`]; const freq = v.angle === 0 ? 0 : 0.12 + (v.angle / 360) * 0.45; const oldPhase = state['phase'+id];
+          state['phase'+id] += freq; state['history'+id][state.ptr] = v.angle > 0 ? Math.sin(state['phase'+id]) : 0; state['xHistory'+id][state.ptr] = v.x;
+          if (is3D && v.angle > 15 && Math.sin(oldPhase) < 0 && Math.sin(state['phase'+id]) >= 0) spawnDrop(v.x);
+        });
+        if (is3D) state.drops.forEach((d, i) => { d.v += 0.5; d.y += d.v; const prog = Math.min(1, (d.y - 20) / 60); d.el.style.top = (d.y - prog * 35) + "px"; d.el.style.opacity = 1 - prog; if (d.y > 65) { d.el.remove(); state.drops.splice(i, 1); } });
+      }
+      const mainRect = document.getElementById('main-ui').getBoundingClientRect();
+      [1, 2].forEach(id => {
+        const v = state[`v${id}`], nozzle = document.getElementById(`nozzle${id}`), stick = document.getElementById(`stick${id}`), path = document.getElementById(`path${id}`);
+        const wobble = (shouldAdvance && v.angle > 0) ? state['history'+id][state.ptr] * 3 : 0;
+        nozzle.style.top = (-16 * parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--scale-factor')) + wobble) + "px";
+        const vArea = document.getElementById(`v${id}-area`).getBoundingClientRect(), stRect = stick.getBoundingClientRect();
+        const xS = (vArea.left + vArea.width / 2) - mainRect.left, yS = (vArea.top + vArea.height / 2) - mainRect.top, xE = (stRect.left + stRect.width / 2) - mainRect.left, yE = stRect.top - mainRect.top;
+        path.setAttribute("d", `M ${xS} ${yS} Q ${xS} ${yE}, ${xE} ${yE}`);
+        document.getElementById(`rot${id}`).setAttribute("transform", `rotate(${v.angle} 150 150)`); document.getElementById(`gauge${id}`).style.height = (v.angle/360*100) + "%";
+      });
+      if (is3D && threeState.renderer) {
+        const pos = threeState.geometry.attributes.position.array;
+        for (let iy = 0; iy < 80; iy++) {
+          const worldY = (iy / 79) * H * 1.5 - H * 0.25;
+          for (let ix = 0; ix < 80; ix++) {
+            const worldX = (ix / 79) * W * 1.5 - W * 0.25;
+            const gtW = (id) => { const v = state[`v${id}`], h = state[`history${id}`], xh = state[`xHistory${id}`]; const d = Math.hypot(worldX - v.x, worldY); let t = (state.ptr - Math.round(d / waveSpeed) + 3000) % 3000; const d_r = Math.hypot(worldX - xh[t], worldY); t = (state.ptr - Math.round(d_r / waveSpeed) + 3000) % 3000; return h[t] * (10000 / (Math.hypot(worldX - xh[t], worldY) + 150)); };
+            pos[(iy * 80 + ix) * 3 + 2] = (gtW(1) + gtW(2)) * threeState.zScale;
+          }
+        }
+        threeState.geometry.attributes.position.needsUpdate = true; threeState.geometry.computeVertexNormals(); threeState.renderer.render(threeState.scene, threeState.camera);
+      } else if (!is3D) {
+        const imgData = ctx.createImageData(W, H), data = imgData.data, curFreq1 = 0.12 + (state.v1.angle / 360) * 0.45, curFreq2 = 0.12 + (state.v2.angle / 360) * 0.45, avgL = (state.v1.angle > 5 && state.v2.angle > 5) ? (2 * Math.PI * waveSpeed) / ((curFreq1 + curFreq2) / 2) : 0;
+        for (let y = 0; y < H; y++) { 
+          for (let x = 0; x < W; x++) { 
+            const gtW = (id) => { 
+              const v = state[`v${id}`], h = state[`history${id}`], xh = state[`xHistory${id}`]; 
+              const d = Math.hypot(x - v.x, y); 
+              let t = (state.ptr - Math.round(d / waveSpeed) + 3000) % 3000; 
+              const d_r = Math.hypot(x - xh[t], y); 
+              t = (state.ptr - Math.round(d_r / waveSpeed) + 3000) % 3000; 
+              const fD = Math.hypot(x - xh[t], y); 
+              return { val: h[t] * (10000 / (fD + 150)), d: fD }; 
+            }; 
+            const w1 = gtW(1), w2 = gtW(2), sum = w1.val + w2.val; 
+            let r = 180 - sum, g = 215 - sum * 0.8, b = 240 - sum * 0.2; 
+            if (isAnalysis && avgL > 0) { 
+              const diff = Math.abs(w1.d - w2.d) / avgL; 
+              const as = Math.exp(-Math.pow(Math.abs(diff - Math.round(diff)) / 0.12, 2)), ns = Math.exp(-Math.pow(Math.abs(diff - (Math.floor(diff) + 0.5)) / 0.10, 2)); 
+              if (as > 0.05) { r = r*(1-0.7*as)+255*0.7*as; g = g*(1-0.7*as)+20*0.7*as; b = b*(1-0.7*as)+20*0.7*as; } 
+              if (ns > 0.05) { r = r*(1-0.6*ns)+255*0.6*ns; g = g*(1-0.6*ns)+255*0.6*ns; b = b*(1-0.6*ns)+255*0.6*ns; } 
+            } 
+            const i = (y * W + x) * 4; 
+            data[i]=r; data[i+1]=g; data[i+2]=b; data[i+3]=255; 
+          } 
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
+    } catch (e) { console.error(e); }
+    requestAnimationFrame(draw);
+  }
+  draw();
+</script>
+</body>
+</html>
